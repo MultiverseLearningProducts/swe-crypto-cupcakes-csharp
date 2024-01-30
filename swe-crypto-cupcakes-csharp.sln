@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.002.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "swe-crypto-cupcakes-csharp", "swe-crypto-cupcakes-csharp.csproj", "{5774AE4F-0A55-4EFF-9470-9B905C3EABA7}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{5774AE4F-0A55-4EFF-9470-9B905C3EABA7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5774AE4F-0A55-4EFF-9470-9B905C3EABA7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5774AE4F-0A55-4EFF-9470-9B905C3EABA7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5774AE4F-0A55-4EFF-9470-9B905C3EABA7}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {5578BD07-8B28-4A1A-A779-E5132AF9CD04}
+	EndGlobalSection
+EndGlobal
