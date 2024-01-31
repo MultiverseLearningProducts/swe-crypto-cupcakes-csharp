@@ -3,18 +3,18 @@
 Welcome to SWE Crypto Cupcakes, C# Edition! The feature branches in this repo represent the evolution of a sample app. Each week we can demo a new branch, look at what has changed and why:
 
 1. `cupcakes-api`
-2. `security`
-3. `jwt`
-4. `oauth`
+2. `security` (in progress)
+3. `jwt` (in progress)
+4. `oauth` (in progress)
 
-The `main` branch is the same as the finished `oauth` project branch after the 4 weeks of delivery, so get started at the first branch to see the app from the very beginning.
+The `main` branch is the same as the finished `oauth` project branch after the 4 weeks of delivery, so get started at the first branch to see the app from the very beginning. (in progress)
 
 ## Installation
 
 Install the following:
 - IDE such as Visual Studio Code (VS Code) or Visual Studio
 - If using VS Code, install the following VS Code C# extension: [C# Extension](https://marketplace.visualstudio.com/items?itemName=ms-dotnettools.csharp)
-- Install .NET: [.NET SDK](https://dotnet.microsoft.com/download/dotnet/6.0) - or preferred version
+- Install .NET: [.NET 7.0](https://dotnet.microsoft.com/download/dotnet/7.0) - or preferred version
 - Optionally, you may also install the following VS Code extensions:
     - [C# Dev Kit](https://marketplace.visualstudio.com/items?itemName=ms-dotnettools.csdevkit)
     - [.NET MAUI](https://marketplace.visualstudio.com/items?itemName=ms-dotnettools.dotnet-maui)
@@ -24,7 +24,7 @@ Install the following:
 - Clone this repository.
 - Open up this project in your IDE of choice such as VS Code or Visual Studio.
 
-## Run Back-end Locally
+## Run Application Locally
 
 Trust HTTP certificate
 
