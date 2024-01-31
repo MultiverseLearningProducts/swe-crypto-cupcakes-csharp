@@ -1,45 +1,105 @@
 # SWE Crypto Cupcakes - C#
 
-Welcome to SWE Crypto Cupcakes, C# Edition! The feature branches in this repo represent the evolution of a sample app. Each week we can demo a new branch, look at what has changed and why:
+**See setup instructions on the `main` branch to install dependencies and start the ASP.NET Core server.**
 
-1. `cupcakes-api`
-2. `security` (in progress)
-3. `jwt` (in progress)
-4. `oauth` (in progress)
+This branch implements a very basic API which allows users to `POST` and `GET`
+cupcakes.
 
-The `main` branch is the same as the finished `oauth` project branch after the 4 weeks of delivery, so get started at the first branch to see the app from the very beginning. (in progress)
+A cupcake looks like this
 
-## Installation
-
-Install the following:
-- IDE such as Visual Studio Code (VS Code) or Visual Studio
-- If using VS Code, install the following VS Code C# extension: [C# Extension](https://marketplace.visualstudio.com/items?itemName=ms-dotnettools.csharp)
-- Install .NET: [.NET 7.0](https://dotnet.microsoft.com/download/dotnet/7.0) - or preferred version
-- Optionally, you may also install the following VS Code extensions:
-    - [C# Dev Kit](https://marketplace.visualstudio.com/items?itemName=ms-dotnettools.csdevkit)
-    - [.NET MAUI](https://marketplace.visualstudio.com/items?itemName=ms-dotnettools.dotnet-maui)
-    - [Unity](https://marketplace.visualstudio.com/items?itemName=visualstudiotoolsforunity.vstuc)
-
-## Setup
-- Clone this repository.
-- Open up this project in your IDE of choice such as VS Code or Visual Studio.
-
-## Run Application Locally
-
-Trust HTTP certificate
-
-```bash
-  dotnet dev-certs https --trust
+```json
+{
+  "id": 2,
+  "flavor": "Chocolate",
+  "instructions": "leave outside for an hour"
+}
 ```
 
-Start the server
+## Coach Notes
+
+The focus on this session is building principled APIs. You will find that the
+code in this API is imperfect in many ways, and that is a good thing. The reason
+for giving you a codebase up front rather than starting from scratch means we
+can model _codebase exploration_ and _refactoring_ - two very important skills
+on-the-job.
+
+As you explore the codebase with the apprentices, be sure to point out any of
+the features which align with the learning objectives, and make as many
+improvements as you wish (but please don't push refactors to the remote
+branch!). You could take suggestions from the apprentices, drop hints to see if
+they spot some refactors, or take the lead if they seem hesitant.
+
+## Things to see and do
+
+
+### Folder Structure of .NET App
+
+ASP.NET Core promotes a particular structure and organization of files and folders, so every piece works correctly together. Important functionality here is in the `Controllers`, `Data`, and `Models` directories. `Program.cs` is also a key file that serves as the entry point to this .NET application where the runtime is configured and the server is started.
+
+### Cupcake ID
+
+It could be a chance to talk how we are incrementing the id when creating a new cupcake. Are there other ways to do this?
+
+### Response codes
+
+Have a look at the response codes and see if apprentices recognise any of them.
+Have they used these before? Why are they important?
+
+### Error handling and validation
+
+There isn't much! Where might we want to implement some error handling or
+validation? Can apprentices suggest any points where errors may occur that
+require handling? Anything more we could do to improve validation?
+
+### Make some requests
+
+After completing the setup instructions on the `main` branch and start the server with the `dotnet run --launch-profile https` command, you should be able to hit the API at
+`https://localhost:7119`
+
+Try getting a single cupcake with
 
 ```bash
-  dotnet run --launch-profile https
+curl -L -v -XGET 'https://localhost:7119/cupcakes/3' | json_pp
 ```
 
-## Testing
+Does it work? What do you see in the request and response? (N.b. in the output
+of cURL, anything with a `>` is part of the request, and anything with a `<` is
+part of the response.)
 
-Test the API endpoints by:
-- visting the https URL generated in the terminal with /swagger appended (e.g. https://localhost:7234/swagger)
-- using a tool such as Postman or Thunder Client (https://localhost:7234)
+Why did we choose `/3` and not `?id=3`? Which is the better implementation? Why?
+
+Try getting many cupcakes with
+
+```bash
+curl -L -v -XGET 'https://localhost:7119/cupcakes' | json_pp
+```
+
+and
+
+```bash
+curl -L -v -XGET 'https://localhost:7119/cupcakes?flavor=Chocolate' | json_pp
+```
+
+What other query params could we provide to the users to make their life easier?
+(E.g. pagination, sorting).
+
+What design problems are there with this endpoint? (E.g. what if there are two
+million rows of data?)
+
+Try creating a cupcake with
+
+```bash
+curl -L -v -XPOST \
+-H "Content-type: application/json" \
+-d '{ "flavor" : "marble", "instructions" : "just heat up and enjoy" }' \
+'https://localhost:7119/cupcakes' | json_pp
+```
+
+The API sends back the created resource! Why might this be useful for users of
+the API?
+
+## Next steps
+
+Apprentices will be given the specification for Snippr, and also some guidance
+on which framework aligns with their language. It is their turn to head off and
+try to implement the spec for themselves.
