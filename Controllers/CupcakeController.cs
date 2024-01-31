@@ -5,7 +5,7 @@ namespace SweCryptoCupcakesCsharp.Controllers;
 
 
 [ApiController]
-[Route("[controller]")]
+[Route("[controller]s")]
 public class CupcakeController : ControllerBase
 {
     public static List<Cupcake> cupcakes = new List<Cupcake>();
