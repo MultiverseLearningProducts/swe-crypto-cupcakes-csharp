@@ -49,7 +49,7 @@ public class EncryptUtility
     public string Decrypt(string input)
     {
         // Declare string to hold decryptedText text
-        string decryptedText = null;
+        string decryptedText = "";
 
         // Create an AesCryptoServiceProvider object with the specified key and IV.
         using (Aes aes = Aes.Create())

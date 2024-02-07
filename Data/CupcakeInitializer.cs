@@ -15,7 +15,7 @@ public static class CupcakeInitializer
 
         var cupcakesFromJson = JsonConvert.DeserializeObject<List<Cupcake>>(cupcakesJson);
 
-        CupcakeController.cupcakes.AddRange(cupcakesFromJson);
+        CupcakeController.cupcakes.AddRange(cupcakesFromJson?.ToList() ?? new List<Cupcake>());
         CupcakeController.uniqueId = CupcakeController.cupcakes.Count();
     }
 }
