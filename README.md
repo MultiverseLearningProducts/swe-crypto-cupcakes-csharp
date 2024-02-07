@@ -61,9 +61,37 @@ This would give us
 f38f89759ae6da84
 ```
 
-Save your key in the `secrets.json` file, then you can add some code to `EncryptUtility.cs`.
+For this demo, we are saving the key in the `secrets.json` file, then you can add some code to `EncryptUtility.cs` to demonstrate the keys in use.
 
 It is worth talking about why we put this in a `secrets.json` file and let them see you doing this step. Additionally note to apprentices that these secrets are normally not committed to the repository because of the sensitivity of the values such as the encryption key. For demonstration purposes this is being committed, rather than each coach having to work with different versions of encrypted data with different encryption keys.
+
+#### Secret Manager tool provided by .NET Core
+
+In .NET Core, it is common and preferred to save secrets info to a store using .NET's Secret Manager Tool. Alternatively, you could read these keys directly from the `secrets.json` file, however it is standard to use the built-in secret manager. The implementation of this demo uses the Secret Manager Tool. Before running the subsequent commands, set your new secrets with the following commands in the terminal at the root directory of your project.
+
+Initialize user-secrets
+
+```bash
+dotnet user-secrets init
+```
+
+Set a new secret (e.g. your encryption key):
+
+```bash
+dotnet user-secrets set "AES_KEY" "22199a2ce17b2bcbbe4e280b0af97218"
+```
+
+Do the same with your initialization vector:
+
+```bash
+dotnet user-secrets set "AES_IV" "f38f89759ae6da84"
+```
+
+View your secrets using:
+
+```bash
+dotnet user-secrets list
+```
 
 ### CupcakeController.cs
 
@@ -78,7 +106,7 @@ which actually gets stored, then try adding a new cupcake using the bash command
 curl -v -XPOST \
 -H "Content-type: application/json" \
 -d '{ "flavor" : "marble", "instructions" : "freeze for 24 hours beforehand" }' \
-'http://localhost:7119/cupcakes' | json_pp
+'https://localhost:7119/cupcakes' | json_pp
 ```
 
 Notice that the data is encrypted in the data store. If you try retrieving the same cupcake you added: the instructions will be decrypted before being returned by the API
@@ -92,7 +120,7 @@ To create a user, hit
 ```bash
 curl -v -XPOST \
 -H 'Authorization: Basic dGVzdEB1c2VyLmNvbTpwYXNzd29yZDEyMw==' \
-'http://localhost:7119/users' | json_pp
+'https://localhost:7119/users' | json_pp
 ```
 
 Note that `dGVzdEB1c2VyLmNvbTpwYXNzd29yZDEyMw==` is the Base 64 encoding of the
@@ -121,14 +149,14 @@ Try accessing it with the header (you need to `POST` this user first!)
 ```bash
 curl -v -XGET \
 -H 'Authorization: Basic dGVzdEB1c2VyLmNvbTpwYXNzd29yZDEyMw==' \
-'http://localhost:7119/users' | json_pp
+'https://localhost:7119/users' | json_pp
 ```
 
 without the header
 
 ```bash
 curl -v -XGET \
-'http://localhost:7119/users' | json_pp
+'https://localhost:7119/users' | json_pp
 ```
 
 or with the wrong password
@@ -136,7 +164,7 @@ or with the wrong password
 ```bash
 curl -v -XGET \
 -H 'Authorization: Basic dGVzdEB1c2VyLmNvbTpwYXNzd29yZDEyNA==' \
-'http://localhost:7119/users' | json_pp
+'https://localhost:7119/users' | json_pp
 ```
 
 ## Next steps
