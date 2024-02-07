@@ -1,183 +1,45 @@
 # SWE Crypto Cupcakes - C#
 
-**See setup instructions on the `main` branch to install dependencies and start
-the ASP.NET Core server.**
+Welcome to SWE Crypto Cupcakes, C# Edition! The feature branches in this repo represent the evolution of a sample app. Each week we can demo a new branch, look at what has changed and why:
 
-This branch deals with two security measures:
+1. `cupcakes-api`
+2. `security`
+3. `jwt` (in progress)
+4. `oauth` (in progress)
 
-- encrypting the cupcake instructions
-- creating user accounts
+The `main` branch is the same as the finished `oauth` project branch after the 4 weeks of delivery, so get started at the first branch to see the app from the very beginning. (in progress)
 
-We have also refactored into separate routes for readability.
+## Installation
 
-## Coach notes
+Install the following:
+- IDE such as Visual Studio Code (VS Code) or Visual Studio
+- If using VS Code, install the following VS Code C# extension: [C# Extension](https://marketplace.visualstudio.com/items?itemName=ms-dotnettools.csharp)
+- Install .NET: [.NET 7.0](https://dotnet.microsoft.com/download/dotnet/7.0) - or preferred version
+- Optionally, you may also install the following VS Code extensions:
+    - [C# Dev Kit](https://marketplace.visualstudio.com/items?itemName=ms-dotnettools.csdevkit)
+    - [.NET MAUI](https://marketplace.visualstudio.com/items?itemName=ms-dotnettools.dotnet-maui)
+    - [Unity](https://marketplace.visualstudio.com/items?itemName=visualstudiotoolsforunity.vstuc)
 
-The big concepts at play are
+## Setup
+- Clone this repository.
+- Open up this project in your IDE of choice such as VS Code or Visual Studio.
 
-- [encryption](https://mv-swe-docs.netlify.app/backend/encryption)
-- [hashing](https://mv-swe-docs.netlify.app/backend/hashing)
-- the [basic auth](https://mv-swe-docs.netlify.app/backend/basic-auth.html)
-  protocol
+## Run Application Locally
 
-The primers linked to above are designed for colleagues to brush up on the
-details, but it's fine to share them with apprentices to if you think they would
-appreciate any of the details.
-
-## Things to see and do
-
-### EncryptUtility.cs
-
-#### Encrypting cupcake instructions
-
-In `Utilities/EncryptUtility.cs` we can see the helper functions which encrypt
-and decrypt data. There's quite a lot going on here and apprentices might want
-to search for something simpler but less secure.
-
-In order to use the functions, you will need to generate a 16-byte key (32 hexadecimal characters). Recall that **1 byte = 8 bits**, so 16 bytes is 128 bits, as required by the SHA256 algorithm that AES is based on. The function expects these 16 bytes as hex. You will also need to generate a 8-byte key (16 hexadecimal characters) for the initialization vector, using a similar process.
-
-Generate the AES Key:
+Trust HTTP certificate
 
 ```bash
-openssl rand -hex 16
+  dotnet dev-certs https --trust
 ```
 
-This would give us
+Start the server
 
 ```bash
-22199a2ce17b2bcbbe4e280b0af97218
+  dotnet run --launch-profile https
 ```
 
-(You will notice that these two two times the number of characters (e.g. 32) than bytes (e.g. 16). This is because 1 byte in hex is represented by a pair of characters.)
+## Testing
 
-Generate the AES IV:
-
-```bash
-openssl rand -hex 8
-```
-
-This would give us
-
-```bash
-f38f89759ae6da84
-```
-
-For this demo, we are saving the key in the `secrets.json` file, then you can add some code to `EncryptUtility.cs` to demonstrate the keys in use.
-
-It is worth talking about why we put this in a `secrets.json` file and let them see you doing this step. Additionally note to apprentices that these secrets are normally not committed to the repository because of the sensitivity of the values such as the encryption key. For demonstration purposes this is being committed, rather than each coach having to work with different versions of encrypted data with different encryption keys.
-
-#### Secret Manager tool provided by .NET Core
-
-In .NET Core, it is common and preferred to save secrets info to a store using .NET's Secret Manager Tool. Alternatively, you could read these keys directly from the `secrets.json` file, however it is standard to use the built-in secret manager. The implementation of this demo uses the Secret Manager Tool. Before running the subsequent commands, set your new secrets with the following commands in the terminal at the root directory of your project.
-
-Initialize user-secrets
-
-```bash
-dotnet user-secrets init
-```
-
-Set a new secret (e.g. your encryption key):
-
-```bash
-dotnet user-secrets set "AES_KEY" "22199a2ce17b2bcbbe4e280b0af97218"
-```
-
-Do the same with your initialization vector:
-
-```bash
-dotnet user-secrets set "AES_IV" "f38f89759ae6da84"
-```
-
-View your secrets using:
-
-```bash
-dotnet user-secrets list
-```
-
-### CupcakeController.cs
-
-In `CupcakeController.cs` we can see that new instructions are now being encrypted!
-
-In `seedData.json` we can also see that the instructions in the seed data are encrypted as well!
-
-Try adding `Console.Write` in the `POST /cupcakes` endpoint so you can see the data
-which actually gets stored, then try adding a new cupcake using the bash command from the previous week's lesson:
-
-```bash
-curl -v -XPOST \
--H "Content-type: application/json" \
--d '{ "flavor" : "marble", "instructions" : "freeze for 24 hours beforehand" }' \
-'https://localhost:7119/cupcakes' | json_pp
-```
-
-Notice that the data is encrypted in the data store. If you try retrieving the same cupcake you added: the instructions will be decrypted before being returned by the API
-
-### UserController.cs
-
-#### Creating a user
-
-To create a user, hit
-
-```bash
-curl -v -XPOST \
--H 'Authorization: Basic dGVzdEB1c2VyLmNvbTpwYXNzd29yZDEyMw==' \
-'https://localhost:7119/users' | json_pp
-```
-
-Note that `dGVzdEB1c2VyLmNvbTpwYXNzd29yZDEyMw==` is the Base 64 encoding of the
-string `'test@user.com:password123'`. This is the standard way of sending
-credentials with basic auth. See
-[basic auth](https://mv-swe-docs.netlify.app/backend/basic-auth.html) for more
-information.
-
-You could add a `Console.Write(users)` in this endpoint to verify that the
-password gets hashed and salted.
-
-### IdentityService.cs
-
-Take a look at the `Services/IdentityService.cs` interface and its implementation. `CreateUser` and `AuthenticateUser` create the functionality for the `POST /users` and `GET /users` endpoints.
-
-These methods hash/salt the passwords and store user information (including hashed password) in the data store, and check if the hashed passwords match when a user tries to log in, respectively. These methods are both invoked in the `BasicAuthMiddleware.cs` methods.
-
-### BasicAuthMiddleware.cs
-
-Take a look at the `Middleware/BasicAuthMiddleware.cs` middleware. It parses out the credentials from the auth header and saves them in the `context.Items` object for use by other middleware/controllers.
-
-This basic auth is implemented in the `GET /users` endpoint, which checks the password against the stored value before sending back the user's data. We can say that the `GET /users` endpoint is password protected.
-
-Try accessing it with the header (you need to `POST` this user first!)
-
-```bash
-curl -v -XGET \
--H 'Authorization: Basic dGVzdEB1c2VyLmNvbTpwYXNzd29yZDEyMw==' \
-'https://localhost:7119/users' | json_pp
-```
-
-without the header
-
-```bash
-curl -v -XGET \
-'https://localhost:7119/users' | json_pp
-```
-
-or with the wrong password
-
-```bash
-curl -v -XGET \
--H 'Authorization: Basic dGVzdEB1c2VyLmNvbTpwYXNzd29yZDEyNA==' \
-'https://localhost:7119/users' | json_pp
-```
-
-## Next steps
-
-The apprentices are challenged to implement encryption and basic auth for
-themselves. They will likely want to rely on libraries as much as possible: many
-frameworks have canonical ways of doing these things which abstract much of the
-complexity away. Encourage apprentices to go with the flow of what their
-framework recommends. Express.js is very unopinionated so a lot of this feels
-very manual, but there are libraries like `passport` which provide abstractions
-and are well documented.
-
-Apprentices shouldn't try to memorise what they've seen in the demo, but rather
-use the documentation for their framework to implement the spec. Their
-particular implementation might look very different and that is fine (encouraged
-even!)
+Test the API endpoints by:
+- visting the https URL generated in the terminal with /swagger appended (e.g. https://localhost:7234/swagger)
+- using a tool such as Postman or Thunder Client (https://localhost:7234)
