@@ -3,88 +3,42 @@
 **See setup instructions on the `main` branch to install dependencies and start
 the ASP.NET Core server.**
 
-This branch deals with two security measures:
-
-- encrypting the cupcake instructions
-- creating user accounts
-
-We have also refactored into separate routes for readability.
+This branch refactors the basic auth flow to use tokens, which allows for a much
+improved user experience.
 
 ## Coach notes
 
-The big concepts at play are
+The big concept here is [tokens](https://mv-swe-docs.netlify.app/backend/tokens.html).
+We're using JWTs to demonstrate this.
 
-- [encryption](https://mv-swe-docs.netlify.app/backend/encryption)
-- [hashing](https://mv-swe-docs.netlify.app/backend/hashing)
-- the [basic auth](https://mv-swe-docs.netlify.app/backend/basic-auth.html)
-  protocol
-
-The primers linked to above are designed for colleagues to brush up on the
-details, but it's fine to share them with apprentices to if you think they would
-appreciate any of the details.
+The framework the apprentice is working with might already have pushed them in
+the direction of tokens when they were exploring basic auth last week. This is
+fine! The implementation here is quite manual so we can really see what is going
+on under the hood.
 
 ## Things to see and do
 
-### EncryptUtility.cs
 
-#### Encrypting cupcake instructions
+### Create a token secret
 
-In `Utilities/EncryptUtility.cs` we can see the helper functions which encrypt
-and decrypt data. There's quite a lot going on here and apprentices might want
-to search for something simpler but less secure.
-
-In order to use the functions, you will need to generate a 16-byte key (32 hexadecimal characters). Recall that **1 byte = 8 bits**, so 16 bytes is 128 bits, as required by the SHA256 algorithm that AES is based on. The function expects these 16 bytes as hex. You will also need to generate a 8-byte key (16 hexadecimal characters) for the initialization vector, using a similar process.
-
-Generate the AES Key:
+This could be anything, but 32 random bytes is a safe bet:
 
 ```bash
-openssl rand -hex 16
+openssl rand -base64 32
 ```
 
-This would give us
+produces something like
 
 ```bash
-22199a2ce17b2bcbbe4e280b0af97218
+M6JHWx2teUqTY5rNnzjgsgWRKtdCqjc5Je+ULdRhqt0=
 ```
 
-(You will notice that these two two times the number of characters (e.g. 32) than bytes (e.g. 16). This is because 1 byte in hex is represented by a pair of characters.)
+Create your own, or use this one, and save it as a user-secret using .NET's Secret Manager Tool. As a reference for this demo, this token is stored in `appsettings.json`. However, these secrets should usually NOT be committed to the repository, and they should always be stored securily using environment variables or a secret manager.
 
-Generate the AES IV:
-
-```bash
-openssl rand -hex 8
-```
-
-This would give us
+Set a new secret (e.g. your JwtSettings Secret). You can see it in JSON format in `appsettings.json`.
 
 ```bash
-f38f89759ae6da84
-```
-
-For this demo, we are saving the key in the `secrets.json` file, then you can add some code to `EncryptUtility.cs` to demonstrate the keys in use.
-
-It is worth talking about why we put this in a `secrets.json` file and let them see you doing this step. Additionally note to apprentices that these secrets are normally not committed to the repository because of the sensitivity of the values such as the encryption key. For demonstration purposes this is being committed, rather than each coach having to work with different versions of encrypted data with different encryption keys.
-
-#### Secret Manager tool provided by .NET Core
-
-In .NET Core, it is common and preferred to save secrets info to a store using .NET's Secret Manager Tool. Alternatively, you could read these keys directly from the `secrets.json` file, however it is standard to use the built-in secret manager. The implementation of this demo uses the Secret Manager Tool. Before running the subsequent commands, set your new secrets with the following commands in the terminal at the root directory of your project.
-
-Initialize user-secrets
-
-```bash
-dotnet user-secrets init
-```
-
-Set a new secret (e.g. your encryption key):
-
-```bash
-dotnet user-secrets set "AES_KEY" "22199a2ce17b2bcbbe4e280b0af97218"
-```
-
-Do the same with your initialization vector:
-
-```bash
-dotnet user-secrets set "AES_IV" "f38f89759ae6da84"
+dotnet user-secrets set "JwtSettings:Secret" "M6JHWx2teUqTY5rNnzjgsgWRKtdCqjc5Je+ULdRhqt0="
 ```
 
 View your secrets using:
@@ -93,91 +47,99 @@ View your secrets using:
 dotnet user-secrets list
 ```
 
-### CupcakeController.cs
+You could also set the JWT token Issuer, Audience, and other settings following the above steps. This demo will only use the token secret for validation.
 
-In `CupcakeController.cs` we can see that new instructions are now being encrypted!
+### Create a user
 
-In `seedData.json` we can also see that the instructions in the seed data are encrypted as well!
-
-Try adding `Console.Write` in the `POST /cupcakes` endpoint so you can see the data
-which actually gets stored, then try adding a new cupcake using the bash command from the previous week's lesson:
+In this new token based world, we create a user and then sign them in.
 
 ```bash
 curl -v -XPOST \
--H "Content-type: application/json" \
--d '{ "flavor" : "marble", "instructions" : "freeze for 24 hours beforehand" }' \
-'https://localhost:7119/cupcakes' | json_pp
+-H 'Authorization: Basic dGVzdEB1c2VyLmNvbTpwYXNzd29yZDEyMw==' \
+'https://localhost:7119/users' | json_pp
 ```
 
-Notice that the data is encrypted in the data store. If you try retrieving the same cupcake you added: the instructions will be decrypted before being returned by the API
+creates the user, and
+
+```bash
+curl -v -XPOST \
+-H 'Authorization: Basic dGVzdEB1c2VyLmNvbTpwYXNzd29yZDEyMw==' \
+'https://localhost:7119/users/login' | json_pp
+```
+
+signs them in. The latter command should provide you with an accessToken in the
+response. Something like:
+
+```bash
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1laWQiOiIyIiwiZW1haWwiOiJ0ZXN0QHVzZXIuY29tIiwibmJmIjoxNzA3ODQxMDQ1LCJleHAiOjE3MDg0NDU4NDUsImlhdCI6MTcwNzg0MTA0NX0.5s4X8AM2Pu9cB35qHIzEMfyb2h_Q8gx2GQUNiM3j4LU
+```
+
+If you were to sign in again, you would get a different token each time.
+
+### Access a resource
+
+The GET `'/cupcakes'` endpoint has been protected by requiring a JWT. In order to access them,
+you don't need to send your password again, but instead you send your token!
+
+```bash
+curl -L -v -XGET 'https:///localhost:7119/cupcakes'
+```
+
+will fail, but
+
+```bash
+curl -L -v -XGET \
+-H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1laWQiOiIyIiwiZW1haWwiOiJ0ZXN0QHVzZXIuY29tIiwibmJmIjoxNzA3ODQxMDQ1LCJleHAiOjE3MDg0NDU4NDUsImlhdCI6MTcwNzg0MTA0NX0.5s4X8AM2Pu9cB35qHIzEMfyb2h_Q8gx2GQUNiM3j4LU' \
+'https:///localhost:7119/cupcakes' | json_pp
+```
+
+should succeed.
+
+Try changing a single character in the token and see what happens. This prevents
+hackers from spoofing tokens.
+
+If you split the token at the `'.'` characters, you can decode the parts from
+Base 64 to utf-8 so that you can see what they contain.
+
+#### More about the token secret
+
+Option 1: In the [jwt.io](https://jwt.io) sandbox, paste the full token, and enter a different token secret in the `your-256-bit-secret` text box in the "Verify Signature" section to re-sign it. Use the new token in your Authorization header to try to access cupcake info using the request above - it should fail because the secret we use to check the token must be the same secret we used to sign it. Paste in the original token secret into this secret text box, and retry the token - it should now work!
+
+Option 2: You could also accomplish the same thing by stopping your server and restarting it using .NET's Hot Reload feature - this will allow you to make changes to the server in real time:
+
+```bash
+    dotnet watch run --launch-profile https
+```
+
+Once you have it up and running again, repeat the step [above](#create-a-user) to create the user. Then, in `IdentityService.cs`, change the `_jwtSettings.Secret` reference used in `CheckToken()` that is being assigned to `IssuerSigningKey` to any random string of characters. After that, try to access the cupcakes resource (GET `'/cupcakes'` endpoint) with the previously generated token in the Authentication header - it won't work! Change the random string back to `_jwtSettings.Secret` and it will now succeed.
 
 ### UserController.cs
 
-#### Creating a user
+Check out the new POST `'/users/login'` endpoint. This is calling our `GenerateToken()` function in `IdentityService.cs` to generate and send a JWT back to the client.
 
-To create a user, hit
+### JwtMiddleware.cs
 
-```bash
-curl -v -XPOST \
--H 'Authorization: Basic dGVzdEB1c2VyLmNvbTpwYXNzd29yZDEyMw==' \
-'https://localhost:7119/users' | json_pp
-```
+This is the middleware which implements authorization using JWTs, parsing out the token, and then checking its validity using the `CheckToken()` function in `IdentityService.cs`.
 
-Note that `dGVzdEB1c2VyLmNvbTpwYXNzd29yZDEyMw==` is the Base 64 encoding of the
-string `'test@user.com:password123'`. This is the standard way of sending
-credentials with basic auth. See
-[basic auth](https://mv-swe-docs.netlify.app/backend/basic-auth.html) for more
-information.
-
-You could add a `Console.Write(users)` in this endpoint to verify that the
-password gets hashed and salted.
+Depending on the response, it will either store the validated user in HttpContext or send back an error message.
 
 ### IdentityService.cs
 
-Take a look at the `Services/IdentityService.cs` interface and its implementation. `CreateUser` and `AuthenticateUser` create the functionality for the `POST /users` and `GET /users` endpoints.
+The `GenerateToken()` function takes in the user and creates a token that is signed with our `_jwtSettings.Secret` and sends it back.
 
-These methods hash/salt the passwords and store user information (including hashed password) in the data store, and check if the hashed passwords match when a user tries to log in, respectively. These methods are both invoked in the `BasicAuthMiddleware.cs` methods.
+`CheckToken()` validates whether the token was signed with the `_jwtSettings.Secret`, verifying that it really came from our server. Once verified, it will send back user information with the ClaimsPrincipal.
 
-### BasicAuthMiddleware.cs
+Have a look at these functions. At what points do we generate the token and check the token? What error handling is present?
 
-Take a look at the `Middleware/BasicAuthMiddleware.cs` middleware. It parses out the credentials from the auth header and saves them in the `context.Items` object for use by other middleware/controllers.
-
-This basic auth is implemented in the `GET /users` endpoint, which checks the password against the stored value before sending back the user's data. We can say that the `GET /users` endpoint is password protected.
-
-Try accessing it with the header (you need to `POST` this user first!)
-
-```bash
-curl -v -XGET \
--H 'Authorization: Basic dGVzdEB1c2VyLmNvbTpwYXNzd29yZDEyMw==' \
-'https://localhost:7119/users' | json_pp
-```
-
-without the header
-
-```bash
-curl -v -XGET \
-'https://localhost:7119/users' | json_pp
-```
-
-or with the wrong password
-
-```bash
-curl -v -XGET \
--H 'Authorization: Basic dGVzdEB1c2VyLmNvbTpwYXNzd29yZDEyNA==' \
-'https://localhost:7119/users' | json_pp
-```
+The new `JwtSettings.cs` model is also used here and in `Program.cs` to hold JWT configuration settings.
 
 ## Next steps
 
-The apprentices are challenged to implement encryption and basic auth for
-themselves. They will likely want to rely on libraries as much as possible: many
-frameworks have canonical ways of doing these things which abstract much of the
-complexity away. Encourage apprentices to go with the flow of what their
-framework recommends. Express.js is very unopinionated so a lot of this feels
-very manual, but there are libraries like `passport` which provide abstractions
-and are well documented.
+As mentioned, the frameworks the apprentices are using might implement
+token-based authentication in very different ways, and they might not need to do
+much to handle the verification of tokens and handling of secrets. The
+underlying protocol should be roughly the same, however, so encourage them to
+lean into their framework's documentation and not be too worried if the
+implementation of auth looks quite different.
 
-Apprentices shouldn't try to memorise what they've seen in the demo, but rather
-use the documentation for their framework to implement the spec. Their
-particular implementation might look very different and that is fine (encouraged
-even!)
+Focus on the requirements in the spec.
