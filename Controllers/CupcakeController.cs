@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SweCryptoCupcakesCsharp.Models;
 using SweCryptoCupcakesCsharp.Utilities;
@@ -6,6 +7,7 @@ namespace SweCryptoCupcakesCsharp.Controllers;
 
 [ApiController]
 [Route("[controller]s")]
+[Authorize]
 public class CupcakeController : ControllerBase
 {
     public static List<Cupcake> cupcakes = new List<Cupcake>();
