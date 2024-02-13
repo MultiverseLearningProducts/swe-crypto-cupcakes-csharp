@@ -4,7 +4,7 @@ Welcome to SWE Crypto Cupcakes, C# Edition! The feature branches in this repo re
 
 1. `cupcakes-api`
 2. `security`
-3. `jwt` (in progress)
+3. `jwt`
 4. `oauth` (in progress)
 
 The `main` branch is the same as the finished `oauth` project branch after the 4 weeks of delivery, so get started at the first branch to see the app from the very beginning. (in progress)
@@ -36,6 +36,12 @@ Start the server
 
 ```bash
   dotnet run --launch-profile https
+```
+
+Start the server with .NET Hot Reload (to be able to make changes to the server without restarting):
+
+```bash
+  dotnet watch run --launch-profile https
 ```
 
 ## Testing
