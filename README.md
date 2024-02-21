@@ -33,7 +33,7 @@ produces something like
 M6JHWx2teUqTY5rNnzjgsgWRKtdCqjc5Je+ULdRhqt0=
 ```
 
-Create your own, or use this one, and save it as a user-secret using .NET's Secret Manager Tool. As a reference for this demo, this token is stored in `appsettings.json`. However, these secrets should usually NOT be committed to the repository, and they should always be stored securily using environment variables or a secret manager.
+Create your own, or use this one, and save it as a user-secret using .NET's Secret Manager Tool. As a reference for this demo, this token is stored in `appsettings.json`. However, these secrets should usually NOT be committed to the repository, and they should always be stored securely using environment variables or a secret manager.
 
 Set a new secret (e.g. your JwtSettings Secret). You can see it in JSON format in `appsettings.json`.
 
