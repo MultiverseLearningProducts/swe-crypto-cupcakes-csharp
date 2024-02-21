@@ -3,42 +3,28 @@
 **See setup instructions on the `main` branch to install dependencies and start
 the ASP.NET Core server.**
 
-This branch refactors the basic auth flow to use tokens, which allows for a much
-improved user experience.
+This branch removes some of the work we did last time: we no longer have to manually implement `/users` endpoints for signing up, logging in, or logging out. These are now provided by the Auth0 SDK (software development kit) through the Nuget package `Auth0.AspNetCore.Authentication`. We were able to remove the Middleware classes, the IdentityService class, and the JwtSettings model. This refactor should allow us to sign in with Google, and benefit from all the goodness Auth0 provides: user management database, account merging, premade middleware and UI, no-hassle security updates and a team of security experts monitoring the landscape at all times. 
+
+The past two sessions have been quite heavy - lots of manually handling tokens
+etc. This session should feel like a bit of a relief because Auth0 handles a lot
+of the difficulty for us.
 
 ## Coach notes
 
-The big concept here is [tokens](https://mv-swe-docs.netlify.app/backend/tokens.html).
-We're using JWTs to demonstrate this.
+Set up your Auth0 Domain, ClientId, and ClientSecret as user-secrets using .NET's Secret Manager Tool. As a reference for this demo, this information is stored in `secrets.json`. However, these secrets should usually NOT be committed to the repository, and they should always be stored securely using environment variables or a secret manager. The values below will technically work, but see below for instructions to create an Auth0 account and generate your own application and related configuration values.
 
-The framework the apprentice is working with might already have pushed them in
-the direction of tokens when they were exploring basic auth last week. This is
-fine! The implementation here is quite manual so we can really see what is going
-on under the hood.
-
-## Things to see and do
-
-
-### Create a token secret
-
-This could be anything, but 32 random bytes is a safe bet:
+Set new secrets for the Domain (issuer base url), ClientId, and ClientSecret. You can see it in JSON format in `secrets.json`.
 
 ```bash
-openssl rand -base64 32
+dotnet user-secrets set "Auth0:Domain" "dev-qdcrhjic0t4oqyqr.us.auth0.com"
 ```
 
-produces something like
-
 ```bash
-M6JHWx2teUqTY5rNnzjgsgWRKtdCqjc5Je+ULdRhqt0=
+dotnet user-secrets set "Auth0:ClientId" "SJXEXbtBh03DyFh2mnYwuF7TKipdGLjA"
 ```
 
-Create your own, or use this one, and save it as a user-secret using .NET's Secret Manager Tool. As a reference for this demo, this token is stored in `appsettings.json`. However, these secrets should usually NOT be committed to the repository, and they should always be stored securily using environment variables or a secret manager.
-
-Set a new secret (e.g. your JwtSettings Secret). You can see it in JSON format in `appsettings.json`.
-
 ```bash
-dotnet user-secrets set "JwtSettings:Secret" "M6JHWx2teUqTY5rNnzjgsgWRKtdCqjc5Je+ULdRhqt0="
+dotnet user-secrets set "Auth0:ClientSecret" "FMSlM6M07xTfVMGgSOQtWjfgDSNVK-uGqAe5fqyJNFtvymJt0nV45l6k4k8qoM8H"
 ```
 
 View your secrets using:
@@ -47,99 +33,127 @@ View your secrets using:
 dotnet user-secrets list
 ```
 
-You could also set the JWT token Issuer, Audience, and other settings following the above steps. This demo will only use the token secret for validation.
+In `Program.cs`, you will notice new configuration using `Configure` and `AddAuth0WebAppAuthentication`: this is for Auth0.
 
-### Create a user
+```c#
+builder.Services.Configure<CookiePolicyOptions>(options =>
+{
+    options.MinimumSameSitePolicy = SameSiteMode.None;
+});
 
-In this new token based world, we create a user and then sign them in.
+builder.Services.AddAuth0WebAppAuthentication(options =>
+{
+    IConfigurationSection auth0Config = builder.Configuration.GetSection("Auth0");
 
-```bash
-curl -v -XPOST \
--H 'Authorization: Basic dGVzdEB1c2VyLmNvbTpwYXNzd29yZDEyMw==' \
-'https://localhost:7119/users' | json_pp
+    options.Domain = auth0Config["Domain"];
+    options.ClientId = auth0Config["ClientId"];
+    options.ClientSecret = auth0Config["ClientSecret"];
+    options.Scope = "openid profile email";
+});
 ```
 
-creates the user, and
+`AccountController.cs` was created for the new `/account/login` and `/account/logout` endpoints using the Auth0 documentation. You'll also see redirects so `/login` and `/logout` hit those same endpoints:
 
-```bash
-curl -v -XPOST \
--H 'Authorization: Basic dGVzdEB1c2VyLmNvbTpwYXNzd29yZDEyMw==' \
-'https://localhost:7119/users/login' | json_pp
+```c#
+[HttpGet("login")]
+public async Task Login()
+{
+    var authenticationProperties = new LoginAuthenticationPropertiesBuilder()
+        .WithRedirectUri("/cupcakes")
+        .Build();
+
+    await HttpContext.ChallengeAsync(Auth0Constants.AuthenticationScheme, authenticationProperties);
+}
+
+[HttpGet("logout")]
+[Authorize]
+public async Task Logout()
+{
+    var authenticationProperties = new LogoutAuthenticationPropertiesBuilder()
+        .WithRedirectUri(Url.Action("/"))
+        .Build();
+
+    await HttpContext.SignOutAsync(Auth0Constants.AuthenticationScheme, authenticationProperties);
+    await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+}
 ```
 
-signs them in. The latter command should provide you with an accessToken in the
-response. Something like:
+You'll also notice that `UserController.cs` has been updated to return information about the logged-in user using .NET's built-in identity system and claims from Auth0.
 
-```bash
-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1laWQiOiIyIiwiZW1haWwiOiJ0ZXN0QHVzZXIuY29tIiwibmJmIjoxNzA3ODQxMDQ1LCJleHAiOjE3MDg0NDU4NDUsImlhdCI6MTcwNzg0MTA0NX0.5s4X8AM2Pu9cB35qHIzEMfyb2h_Q8gx2GQUNiM3j4LU
+```c#
+[HttpGet]
+    [Authorize]
+    public ActionResult<User> GetUser()
+    {
+        return Ok( new {
+            Name = User.Identity.Name,
+            EmailAddress = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value,
+            ProfileImage = User.Claims.FirstOrDefault(c => c.Type == "picture")?.Value,
+            Sub = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value
+        });
+    }
 ```
 
-If you were to sign in again, you would get a different token each time.
+Whlist the app would probably work on your machine, you wouldn't be able to go
+to Auth0 and show the new user being added to the user management dashboard,
+because the client id and issuer base url (domain) are registered to
+david.todd@multiverse.io. It would be a great idea to get hold of your own
+values for these by setting up your own Auth0 account and making a SWE Crypto Cupcakes
+application - follow the tutorial for an ASP.NET MVC traditional web app to see
+how the whole process works.
 
-### Access a resource
+## Things to see and do
 
-The GET `'/cupcakes'` endpoint has been protected by requiring a JWT. In order to access them,
-you don't need to send your password again, but instead you send your token!
+### Auth0 website
 
-```bash
-curl -L -v -XGET 'https:///localhost:7119/cupcakes'
-```
+Take a look at the website and the documentation. Take a look at how the steps
+have been implemented:
 
-will fail, but
+- `Auth0.AspNetCore.Authentication` is the SDK in `swe-crypto-cupcakes-csharp.csproj`
+- the configuration steps in `Program.cs` (this should be done before other routes are registered)
+- `AccountController.cs` implementation of `account/login` and `account/logout` endpoints
+- the `[Authorize]` middleware on endpoints in various routes, similar to last week's implementation
+- the `User.Claims` and `User.Identity` objects in the GET `/users` endpoint
 
-```bash
-curl -L -v -XGET \
--H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1laWQiOiIyIiwiZW1haWwiOiJ0ZXN0QHVzZXIuY29tIiwibmJmIjoxNzA3ODQxMDQ1LCJleHAiOjE3MDg0NDU4NDUsImlhdCI6MTcwNzg0MTA0NX0.5s4X8AM2Pu9cB35qHIzEMfyb2h_Q8gx2GQUNiM3j4LU' \
-'https:///localhost:7119/cupcakes' | json_pp
-```
+### Config
 
-should succeed.
+Notice that we still need a secret to give to the Auth0 configuration in `Program.cs`. Why is this?
+What is it for?
 
-Try changing a single character in the token and see what happens. This prevents
-hackers from spoofing tokens.
+What is the client id?
 
-If you split the token at the `'.'` characters, you can decode the parts from
-Base 64 to utf-8 so that you can see what they contain.
+What is the difference between the base url (e.g. `applicationUrl` defined in `launchSettings.json`) and the issuer base url (domain "defined" in `secrets.json`, but stored in user-secrets)?
 
-#### More about the token secret
+### Protected endpoints
 
-Option 1: In the [jwt.io](https://jwt.io) sandbox, paste the full token, and enter a different token secret in the `your-256-bit-secret` text box in the "Verify Signature" section to re-sign it. Use the new token in your Authorization header to try to access cupcake info using the request above - it should fail because the secret we use to check the token must be the same secret we used to sign it. Paste in the original token secret into this secret text box, and retry the token - it should now work!
+Run the app with `dotnet watch run --launch-profile https` and try visiting `/cupcakes`. What happens? How is this related to the configuration being defined in `Program.cs`?
 
-Option 2: You could also accomplish the same thing by stopping your server and restarting it using .NET's Hot Reload feature - this will allow you to make changes to the server in real time:
+### Create an account
 
-```bash
-    dotnet watch run --launch-profile https
-```
+Try making an email/password account. Try making one with a third party
+provider.
 
-Once you have it up and running again, repeat the step [above](#create-a-user) to create the user. Then, in `IdentityService.cs`, change the `_jwtSettings.Secret` reference used in `CheckToken()` that is being assigned to `IssuerSigningKey` to any random string of characters. After that, try to access the cupcakes resource (GET `'/cupcakes'` endpoint) with the previously generated token in the Authentication header - it won't work! Change the random string back to `_jwtSettings.Secret` and it will now succeed.
+Notice that signing up also logs you in, which is a much better UX.
 
-### UserController.cs
-
-Check out the new POST `'/users/login'` endpoint. This is calling our `GenerateToken()` function in `IdentityService.cs` to generate and send a JWT back to the client.
-
-### JwtMiddleware.cs
-
-This is the middleware which implements authorization using JWTs, parsing out the token, and then checking its validity using the `CheckToken()` function in `IdentityService.cs`.
-
-Depending on the response, it will either store the validated user in HttpContext or send back an error message.
-
-### IdentityService.cs
-
-The `GenerateToken()` function takes in the user and creates a token that is signed with our `_jwtSettings.Secret` and sends it back.
-
-`CheckToken()` validates whether the token was signed with the `_jwtSettings.Secret`, verifying that it really came from our server. Once verified, it will send back user information with the ClaimsPrincipal.
-
-Have a look at these functions. At what points do we generate the token and check the token? What error handling is present?
-
-The new `JwtSettings.cs` model is also used here and in `Program.cs` to hold JWT configuration settings.
+Take a look at the user management in Auth0.
 
 ## Next steps
 
-As mentioned, the frameworks the apprentices are using might implement
-token-based authentication in very different ways, and they might not need to do
-much to handle the verification of tokens and handling of secrets. The
-underlying protocol should be roughly the same, however, so encourage them to
-lean into their framework's documentation and not be too worried if the
-implementation of auth looks quite different.
+Auth0 have SDKs for most languages/frameworks
+[here](https://auth0.com/docs/quickstart/webapp#webapp). Auth0 provide solutions
+for pure APIs, web apps, SPAs and mobile apps. The pure API solution is
+essentially a reimplementation of the JWT flow we have already done, and isn't
+the best way to get OIDC working. We strongly recommend following the tutorial
+for "traditional web app" - as a bonus, it comes with a "Login with Google"
+integration by default (this hasn't been tested on all languages, though - some
+additional setup could be needed for this).
 
-Focus on the requirements in the spec.
+The Auth0 docs are really strong, and there are sample projects available.
+
+### Extension
+
+There should be plenty to be getting on with, but you could challenge
+apprentices to add "sign in with Github" to their Auth0 solution.
+
+Could they use the access token to read some protected information from their
+Google or Github account? (They may need to add scopes!)
