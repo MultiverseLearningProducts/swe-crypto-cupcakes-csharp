@@ -16,6 +16,10 @@ public class UserController : ControllerBase
     [Authorize]
     public ActionResult<User> GetUser()
     {
+        if (User.Identity == null)
+        {
+            return NotFound("User not logged in");
+        }
         // return specific information about the logged-in user using .NET's built-in identity system and claims from Auth0 (Sub = unique identifier)
         return Ok( new {
             Name = User.Identity.Name,

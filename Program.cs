@@ -27,10 +27,10 @@ builder.Services.Configure<CookiePolicyOptions>(options =>
 builder.Services.AddAuth0WebAppAuthentication(options =>
 {
     IConfigurationSection auth0Config = builder.Configuration.GetSection("Auth0");
-
-    options.Domain = auth0Config["Domain"];
-    options.ClientId = auth0Config["ClientId"];
-    options.ClientSecret = auth0Config["ClientSecret"];
+    
+    options.Domain = auth0Config["Domain"] ?? throw new Exception("Missing 'Domain' setting in Auth0 configuration");
+    options.ClientId = auth0Config["ClientId"] ?? throw new Exception("Missing 'ClientId' setting in Auth0 configuration");;
+    options.ClientSecret = auth0Config["ClientSecret"] ?? throw new Exception("Missing 'ClientSecret' setting in Auth0 configuration");;
     options.Scope = "openid profile email";
 });
 

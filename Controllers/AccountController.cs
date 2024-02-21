@@ -32,7 +32,7 @@ public class AccountController : ControllerBase
     
     // implement Auth0 integration to login users
     [HttpGet("login")]
-    public async Task Login(string returnUrl = null)
+    public async Task Login(string? returnUrl = null)
     {
         var authenticationProperties = new LoginAuthenticationPropertiesBuilder()
             // Points to where Auth0 should redirect the user after login
@@ -49,7 +49,7 @@ public class AccountController : ControllerBase
     {
         var authenticationProperties = new LogoutAuthenticationPropertiesBuilder()
             // Points to where Auth0 should redirect the user after logout
-            .WithRedirectUri(Url.Action("/"))
+            .WithRedirectUri(Url.Action("Home", "Home") ?? "/")
             .Build();
 
         await HttpContext.SignOutAsync(Auth0Constants.AuthenticationScheme, authenticationProperties);
