@@ -4,6 +4,7 @@ using SweCryptoCupcakesCsharp.Models;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using Auth0.AspNetCore.Authentication;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -14,35 +15,23 @@ builder.Services.AddSwaggerGen();
 
 // use dependency injection to register EncryptUtility as a Singleton service to be created once and used across the application when needed
 builder.Services.AddSingleton<EncryptUtility>();
-// add IdentityService for basic auth
-builder.Services.AddSingleton<IdentityService>();
 
-// configure JWT settings
-var jwtSettingsSection = builder.Configuration.GetSection("JwtSettings");
-builder.Services.Configure<JwtSettings>(jwtSettingsSection);
-var jwtSettings = jwtSettingsSection.Get<JwtSettings>();
-if(jwtSettings is null || jwtSettings.Secret is null)
-{
-    throw new ApplicationException("JwtSettings.Secret is null. Ensure it is set in configuration.");
-}
-var key = Encoding.ASCII.GetBytes(jwtSettings.Secret);
+// Auth0 integration
 
-builder.Services.AddAuthentication(x => 
+// Cookie configuration for HTTPS
+builder.Services.Configure<CookiePolicyOptions>(options =>
 {
-    x.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    x.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-})
-.AddJwtBearer(x =>
+    options.MinimumSameSitePolicy = SameSiteMode.None;
+});
+
+builder.Services.AddAuth0WebAppAuthentication(options =>
 {
-    x.RequireHttpsMetadata = false;
-    x.SaveToken = true;
-    x.TokenValidationParameters = new TokenValidationParameters
-    {
-        ValidateIssuerSigningKey = true,
-        IssuerSigningKey = new SymmetricSecurityKey(key),
-        ValidateIssuer = false,
-        ValidateAudience = false
-    };
+    IConfigurationSection auth0Config = builder.Configuration.GetSection("Auth0");
+
+    options.Domain = auth0Config["Domain"];
+    options.ClientId = auth0Config["ClientId"];
+    options.ClientSecret = auth0Config["ClientSecret"];
+    options.Scope = "openid profile email";
 });
 
 // build application
@@ -55,9 +44,6 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-
-app.UseMiddleware<BasicAuthMiddleware>();
-app.UseMiddleware<JwtMiddleware>();
 
 app.UseAuthentication();
 app.UseAuthorization();
